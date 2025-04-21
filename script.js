@@ -1,24 +1,30 @@
-// Initialize map centered on Plainsboro
+// Initialize map and restrict view to Plainsboro Township
+const plainsboroBounds = [
+  [40.309, -74.61], // Southwest corner
+  [40.36, -74.52]   // Northeast corner
+];
+
 const map = L.map('map', {
   minZoom: 13,
-  maxBounds: [
-    [40.309, -74.61], // Southwest corner
-    [40.36, -74.52]   // Northeast corner
-  ]
+  maxZoom: 18,
+  maxBounds: plainsboroBounds,
+  maxBoundsViscosity: 1.0
 }).setView([40.3337, -74.5616], 14);
 
-// Add tile layer
+// Add map tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-// Store all markers
-const markers = [];
+// Keep track of markers
+let markers = [];
 
-// Popup form for adding a marker
-function createForm(latlng) {
-  return `
-    <form onsubmit="return saveMarker(this, ${latlng.lat}, ${latlng.lng})">
+// Handle map click to add a marker
+map.on('click', (e) => {
+  const { lat, lng } = e.latlng;
+
+  const popupForm = `
+    <form id="add-marker-form">
       <label>Description:<br>
         <input type="text" name="description" required>
       </label><br><br>
@@ -31,99 +37,104 @@ function createForm(latlng) {
       <button type="submit">Save</button>
     </form>
   `;
-}
 
-// Click map to add marker form
-map.on('click', function (e) {
-  const popupForm = createForm(e.latlng);
-  L.popup()
+  const popup = L.popup()
     .setLatLng(e.latlng)
     .setContent(popupForm)
     .openOn(map);
+
+  // Wait for popup to render, then attach form handler
+  setTimeout(() => {
+    const form = document.getElementById('add-marker-form');
+    if (form) {
+      form.onsubmit = (event) => {
+        event.preventDefault();
+        const description = form.description.value;
+        const rating = form.rating.value;
+
+        const marker = L.marker([lat, lng]).addTo(map);
+        marker.customData = { description, rating };
+        markers.push(marker);
+
+        updateMarkerPopup(marker);
+        marker.openPopup();
+        map.closePopup();
+      };
+    }
+  }, 10);
 });
-
-// Save marker
-function saveMarker(form, lat, lng) {
-  const description = form.description.value;
-  const rating = form.rating.value;
-
-  const marker = L.marker([lat, lng]).addTo(map);
-  marker.description = description;
-  marker.rating = rating;
-
-  updateMarkerPopup(marker);
-  marker.openPopup();
-  map.closePopup();
-
-  markers.push(marker);
-  return false;
-}
 
 // Update popup content with buttons
 function updateMarkerPopup(marker) {
-  marker.setPopupContent(`
-    <strong>Description:</strong> ${marker.description}<br>
-    <strong>Wear Rating:</strong> ${marker.rating}/5<br><br>
-    <button class="edit-btn" data-lat="${marker.getLatLng().lat}" data-lng="${marker.getLatLng().lng}">Edit</button>
-    <button class="delete-btn" data-lat="${marker.getLatLng().lat}" data-lng="${marker.getLatLng().lng}">Delete</button>
-  `);
+  const { description, rating } = marker.customData;
+
+  const content = `
+    <strong>Description:</strong> ${description}<br>
+    <strong>Wear Rating:</strong> ${rating}/5<br><br>
+    <button class="edit-marker">Edit</button>
+    <button class="delete-marker">Delete</button>
+  `;
+
+  marker.bindPopup(content);
 }
 
 // Handle global button clicks
 document.addEventListener('click', function (e) {
-  if (e.target.classList.contains('edit-btn')) {
-    const lat = parseFloat(e.target.dataset.lat);
-    const lng = parseFloat(e.target.dataset.lng);
-    const marker = findMarkerAt(lat, lng);
+  if (e.target.classList.contains('edit-marker')) {
+    const marker = findMarkerFromPopup(e.target);
     if (marker) {
+      const { description, rating } = marker.customData;
+
       const formHTML = `
-        <form onsubmit="return updateMarker(this, ${lat}, ${lng})">
+        <form id="edit-marker-form">
           <label>Description:<br>
-            <input type="text" name="description" value="${marker.description}" required>
+            <input type="text" name="description" value="${description}" required>
           </label><br><br>
           <label>Wear Rating (1-5):<br>
             <select name="rating">
-              <option ${marker.rating == 1 ? "selected" : ""}>1</option>
-              <option ${marker.rating == 2 ? "selected" : ""}>2</option>
-              <option ${marker.rating == 3 ? "selected" : ""}>3</option>
-              <option ${marker.rating == 4 ? "selected" : ""}>4</option>
-              <option ${marker.rating == 5 ? "selected" : ""}>5</option>
+              <option ${rating == 1 ? "selected" : ""}>1</option>
+              <option ${rating == 2 ? "selected" : ""}>2</option>
+              <option ${rating == 3 ? "selected" : ""}>3</option>
+              <option ${rating == 4 ? "selected" : ""}>4</option>
+              <option ${rating == 5 ? "selected" : ""}>5</option>
             </select>
           </label><br><br>
           <button type="submit">Save</button>
         </form>
       `;
+
       marker.bindPopup(formHTML).openPopup();
+
+      setTimeout(() => {
+        const form = document.getElementById('edit-marker-form');
+        if (form) {
+          form.onsubmit = (event) => {
+            event.preventDefault();
+            marker.customData.description = form.description.value;
+            marker.customData.rating = form.rating.value;
+            updateMarkerPopup(marker);
+            marker.openPopup();
+          };
+        }
+      }, 10);
     }
   }
 
-  if (e.target.classList.contains('delete-btn')) {
-    const lat = parseFloat(e.target.dataset.lat);
-    const lng = parseFloat(e.target.dataset.lng);
-    const marker = findMarkerAt(lat, lng);
+  if (e.target.classList.contains('delete-marker')) {
+    const marker = findMarkerFromPopup(e.target);
     if (marker) {
       map.removeLayer(marker);
+      markers = markers.filter(m => m !== marker);
     }
   }
 });
 
-// Update edited marker
-function updateMarker(form, lat, lng) {
-  const marker = findMarkerAt(lat, lng);
-  if (!marker) return false;
-
-  marker.description = form.description.value;
-  marker.rating = form.rating.value;
-
-  updateMarkerPopup(marker);
-  marker.openPopup();
-  return false;
-}
-
-// Find marker by coordinates
-function findMarkerAt(lat, lng) {
-  return markers.find(m => {
-    const pos = m.getLatLng();
-    return pos.lat === lat && pos.lng === lng;
-  });
+// Helper to find marker from an open popup
+function findMarkerFromPopup(element) {
+  for (const marker of markers) {
+    if (marker.getPopup().getContent().includes(element.outerHTML)) {
+      return marker;
+    }
+  }
+  return null;
 }
