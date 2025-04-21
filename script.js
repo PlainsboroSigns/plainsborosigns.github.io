@@ -1,3 +1,33 @@
+// -------------------- Access Control --------------------
+
+let editingEnabled = false;
+
+function setMode(mode) {
+  if (mode === 'guest') {
+    editingEnabled = false;
+    document.getElementById('modeOverlay').style.display = 'none';
+  } else if (mode === 'editor') {
+    document.getElementById('passArea').style.display = 'block';
+  }
+}
+
+function promptPassword() {
+  setMode('editor');
+}
+
+function checkPassword() {
+  const input = document.getElementById('editorPass').value;
+  if (input === 'erikperkins1025047') {
+    editingEnabled = true;
+    document.getElementById('modeOverlay').style.display = 'none';
+    alert("Edit mode enabled.");
+  } else {
+    document.getElementById('wrongPass').style.display = 'block';
+  }
+}
+
+// -------------------- Map Setup --------------------
+
 const plainsboroBounds = [
   [40.309, -74.61],
   [40.36, -74.52]
@@ -16,8 +46,13 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let markers = [];
 
-function createForm(latlng) {
-  return `
+// -------------------- Add Marker Form --------------------
+
+map.on('click', (e) => {
+  if (!editingEnabled) return;
+
+  const { lat, lng } = e.latlng;
+  const popupForm = `
     <form id="add-marker-form">
       <label>Description:<br>
         <input type="text" name="description" required>
@@ -28,36 +63,35 @@ function createForm(latlng) {
           <option>4</option><option>5</option>
         </select>
       </label><br><br>
-      <label>Photo:<br>
-        <input type="file" name="photo" accept="image/*" required>
+      <label>Photo file name (from /images/):<br>
+        <input type="text" name="photo" placeholder="example.jpg" required>
       </label><br><br>
       <button type="submit">Save</button>
     </form>
   `;
-}
 
-map.on('click', (e) => {
-  const { lat, lng } = e.latlng;
-  const popup = L.popup().setLatLng(e.latlng).setContent(createForm(e.latlng)).openOn(map);
+  const popup = L.popup().setLatLng(e.latlng).setContent(popupForm).openOn(map);
 
   setTimeout(() => {
     const form = document.getElementById('add-marker-form');
     if (form) {
-      form.onsubmit = async (event) => {
+      form.onsubmit = (event) => {
         event.preventDefault();
         const description = form.description.value;
         const rating = form.rating.value;
-        const photoFile = form.photo.files[0];
-        const photoData = await fileToBase64(photoFile);
+        const photo = form.photo.value;
 
-        const markerData = { lat, lng, description, rating, photo: photoData };
+        const markerData = { lat, lng, description, rating, photo };
         createMarker(markerData);
-        saveMarkerData();
         map.closePopup();
+        // You would manually copy new data to markers.json
+        console.log('NEW MARKER:', markerData);
       };
     }
   }, 10);
 });
+
+// -------------------- Create Marker --------------------
 
 function createMarker(data) {
   const marker = L.marker([data.lat, data.lng]).addTo(map);
@@ -72,19 +106,24 @@ function updateMarkerPopup(marker) {
   const content = `
     <strong>Description:</strong> ${description}<br>
     <strong>Wear Rating:</strong> ${rating}/5<br>
-    <img src="${photo}" alt="Sign photo" style="max-width: 100px; margin-top: 5px;"><br><br>
-    <button class="edit-marker">Edit</button>
-    <button class="delete-marker">Delete</button>
+    <img src="images/${photo}" alt="Sign photo" style="max-width: 100px; margin-top: 5px;"><br><br>
+    ${editingEnabled ? `
+      <button class="edit-marker">Edit</button>
+      <button class="delete-marker">Delete</button>
+    ` : ``}
   `;
+
   marker.bindPopup(content);
 }
+
+// -------------------- Edit & Delete --------------------
 
 document.addEventListener('click', function (e) {
   if (e.target.classList.contains('edit-marker')) {
     const marker = findMarkerFromPopup(e.target);
     if (!marker) return;
 
-    const { description, rating } = marker.customData;
+    const { description, rating, photo } = marker.customData;
 
     const formHTML = `
       <form id="edit-marker-form">
@@ -100,6 +139,9 @@ document.addEventListener('click', function (e) {
             <option ${rating == 5 ? "selected" : ""}>5</option>
           </select>
         </label><br><br>
+        <label>Photo file name:<br>
+          <input type="text" name="photo" value="${photo}" required>
+        </label><br><br>
         <button type="submit">Save</button>
       </form>
     `;
@@ -113,9 +155,9 @@ document.addEventListener('click', function (e) {
           event.preventDefault();
           marker.customData.description = form.description.value;
           marker.customData.rating = form.rating.value;
+          marker.customData.photo = form.photo.value;
           updateMarkerPopup(marker);
           marker.openPopup();
-          saveMarkerData();
         };
       }
     }, 10);
@@ -126,7 +168,6 @@ document.addEventListener('click', function (e) {
     if (!marker) return;
     map.removeLayer(marker);
     markers = markers.filter(m => m !== marker);
-    saveMarkerData();
   }
 });
 
@@ -139,29 +180,11 @@ function findMarkerFromPopup(buttonEl) {
   return null;
 }
 
-// Helper: convert file to base64
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+// -------------------- Load markers from JSON --------------------
 
-// Save all marker data to localStorage
-function saveMarkerData() {
-  const data = markers.map(m => m.customData);
-  localStorage.setItem('plainsboroSigns', JSON.stringify(data));
-}
-
-// Load marker data on startup
-function loadMarkers() {
-  const stored = localStorage.getItem('plainsboroSigns');
-  if (stored) {
-    const data = JSON.parse(stored);
+fetch('data/markers.json')
+  .then(res => res.json())
+  .then(data => {
     data.forEach(markerData => createMarker(markerData));
-  }
-}
-
-loadMarkers();
+  })
+  .catch(err => console.error('Error loading markers.json', err));
