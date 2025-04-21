@@ -17,7 +17,7 @@ function promptPassword() {
 
 function checkPassword() {
   const input = document.getElementById('editorPass').value;
-  if (input === 'erikperkins1025047') {
+  if (input === '1025047') {
     editingEnabled = true;
     document.getElementById('modeOverlay').style.display = 'none';
     document.getElementById('editor-controls').style.display = 'block';
@@ -71,7 +71,10 @@ map.on('click', (e) => {
     </form>
   `;
 
-  const popup = L.popup().setLatLng(e.latlng).setContent(popupForm).openOn(map);
+  L.popup()
+    .setLatLng(e.latlng)
+    .setContent(popupForm)
+    .openOn(map);
 
   setTimeout(() => {
     const form = document.getElementById('add-marker-form');
@@ -81,45 +84,47 @@ map.on('click', (e) => {
         const description = form.description.value;
         const rating = form.rating.value;
         const photo = form.photo.value;
-
         const markerData = { lat, lng, description, rating, photo };
-        createMarker(markerData);
+        const marker = createMarker(markerData);
+        marker.openPopup();
         map.closePopup();
       };
     }
   }, 10);
 });
 
-// -------------------- Create Marker --------------------
+// -------------------- Create + Update Markers --------------------
 
 function createMarker(data) {
   const marker = L.marker([data.lat, data.lng]).addTo(map);
   marker.customData = data;
-  updateMarkerPopup(marker);
+
+  marker.bindPopup(generatePopupContent(marker));
   markers.push(marker);
+  return marker;
 }
 
-function updateMarkerPopup(marker) {
+function generatePopupContent(marker) {
   const { description, rating, photo } = marker.customData;
 
-  const content = `
+  return `
     <strong>Description:</strong> ${description}<br>
     <strong>Wear Rating:</strong> ${rating}/5<br>
     <img src="images/${photo}" alt="Sign photo" style="max-width: 100px; margin-top: 5px;"><br><br>
     ${editingEnabled ? `
-      <button class="edit-marker">Edit</button>
-      <button class="delete-marker">Delete</button>
+      <button data-lat="${marker.getLatLng().lat}" data-lng="${marker.getLatLng().lng}" class="edit-marker">Edit</button>
+      <button data-lat="${marker.getLatLng().lat}" data-lng="${marker.getLatLng().lng}" class="delete-marker">Delete</button>
     ` : ``}
   `;
-
-  marker.bindPopup(content);
 }
 
-// -------------------- Edit & Delete --------------------
+// -------------------- Handle Edit/Delete Buttons --------------------
 
-document.addEventListener('click', function (e) {
+document.addEventListener('click', (e) => {
   if (e.target.classList.contains('edit-marker')) {
-    const marker = findMarkerFromPopup(e.target);
+    const lat = parseFloat(e.target.dataset.lat);
+    const lng = parseFloat(e.target.dataset.lng);
+    const marker = findMarkerByLatLng(lat, lng);
     if (!marker) return;
 
     const { description, rating, photo } = marker.customData;
@@ -155,7 +160,7 @@ document.addEventListener('click', function (e) {
           marker.customData.description = form.description.value;
           marker.customData.rating = form.rating.value;
           marker.customData.photo = form.photo.value;
-          updateMarkerPopup(marker);
+          marker.setPopupContent(generatePopupContent(marker));
           marker.openPopup();
         };
       }
@@ -163,20 +168,21 @@ document.addEventListener('click', function (e) {
   }
 
   if (e.target.classList.contains('delete-marker')) {
-    const marker = findMarkerFromPopup(e.target);
-    if (!marker) return;
-    map.removeLayer(marker);
-    markers = markers.filter(m => m !== marker);
+    const lat = parseFloat(e.target.dataset.lat);
+    const lng = parseFloat(e.target.dataset.lng);
+    const marker = findMarkerByLatLng(lat, lng);
+    if (marker) {
+      map.removeLayer(marker);
+      markers = markers.filter(m => m !== marker);
+    }
   }
 });
 
-function findMarkerFromPopup(buttonEl) {
-  for (const marker of markers) {
-    if (marker.getPopup().getContent().includes(buttonEl.outerHTML)) {
-      return marker;
-    }
-  }
-  return null;
+function findMarkerByLatLng(lat, lng) {
+  return markers.find(m => {
+    const pos = m.getLatLng();
+    return pos.lat === lat && pos.lng === lng;
+  });
 }
 
 // -------------------- Load markers from JSON --------------------
@@ -184,15 +190,7 @@ function findMarkerFromPopup(buttonEl) {
 fetch('data/markers.json')
   .then(res => res.json())
   .then(data => {
-    data.forEach(markerData => {
-      createMarker({
-        lat: markerData.lat,
-        lng: markerData.lng,
-        description: markerData.description,
-        rating: markerData.rating,
-        photo: markerData.photo
-      });
-    });
+    data.forEach(markerData => createMarker(markerData));
   })
   .catch(err => console.error('Error loading markers.json', err));
 
@@ -202,11 +200,9 @@ function downloadMarkerData() {
   const markerData = markers.map(m => m.customData);
   const blob = new Blob([JSON.stringify(markerData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement('a');
   a.href = url;
   a.download = 'markers.json';
   a.click();
-
   URL.revokeObjectURL(url);
 }
