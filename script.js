@@ -20,6 +20,7 @@ function checkPassword() {
   if (input === 'erikperkins1025047') {
     editingEnabled = true;
     document.getElementById('modeOverlay').style.display = 'none';
+    document.getElementById('editor-controls').style.display = 'block';
     alert("Edit mode enabled.");
   } else {
     document.getElementById('wrongPass').style.display = 'block';
@@ -63,7 +64,7 @@ map.on('click', (e) => {
           <option>4</option><option>5</option>
         </select>
       </label><br><br>
-      <label>Photo file name (from /images/):<br>
+      <label>Photo file name (in /images/):<br>
         <input type="text" name="photo" placeholder="example.jpg" required>
       </label><br><br>
       <button type="submit">Save</button>
@@ -84,8 +85,6 @@ map.on('click', (e) => {
         const markerData = { lat, lng, description, rating, photo };
         createMarker(markerData);
         map.closePopup();
-        // You would manually copy new data to markers.json
-        console.log('NEW MARKER:', markerData);
       };
     }
   }, 10);
@@ -188,3 +187,18 @@ fetch('data/markers.json')
     data.forEach(markerData => createMarker(markerData));
   })
   .catch(err => console.error('Error loading markers.json', err));
+
+// -------------------- Export markers to JSON --------------------
+
+function downloadMarkerData() {
+  const markerData = markers.map(m => m.customData);
+  const blob = new Blob([JSON.stringify(markerData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'markers.json';
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
