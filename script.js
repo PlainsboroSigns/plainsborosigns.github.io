@@ -47,7 +47,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 let markers = [];
 
-// -------------------- Add Marker Form --------------------
+// -------------------- Add Marker --------------------
 
 map.on('click', (e) => {
   if (!editingEnabled) return;
@@ -184,7 +184,15 @@ function findMarkerFromPopup(buttonEl) {
 fetch('data/markers.json')
   .then(res => res.json())
   .then(data => {
-    data.forEach(markerData => createMarker(markerData));
+    data.forEach(markerData => {
+      createMarker({
+        lat: markerData.lat,
+        lng: markerData.lng,
+        description: markerData.description,
+        rating: markerData.rating,
+        photo: markerData.photo
+      });
+    });
   })
   .catch(err => console.error('Error loading markers.json', err));
 
