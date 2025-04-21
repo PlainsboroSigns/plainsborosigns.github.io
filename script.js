@@ -1,25 +1,30 @@
-// Initialize map and restrict view to Plainsboro Township
+// Define Plainsboro map bounds
 const plainsboroBounds = [
-  [40.309, -74.61], // Southwest corner
-  [40.36, -74.52]   // Northeast corner
+  [40.309, -74.61],
+  [40.36, -74.52]
 ];
 
+// Initialize map with locked bounds
 const map = L.map('map', {
+  center: [40.3337, -74.5616],
+  zoom: 14,
   minZoom: 13,
   maxZoom: 18,
   maxBounds: plainsboroBounds,
-  maxBoundsViscosity: 1.0
-}).setView([40.3337, -74.5616], 14);
+  maxBoundsViscosity: 1.0,
+  scrollWheelZoom: false
+});
 
-// Add map tiles
+// Add OpenStreetMap tiles
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '© OpenStreetMap contributors'
 }).addTo(map);
 
-// Keep track of markers
+// Store all markers
 let markers = [];
+let currentlyEditingMarker = null;
 
-// Handle map click to add a marker
+// Add marker form on map click
 map.on('click', (e) => {
   const { lat, lng } = e.latlng;
 
@@ -38,16 +43,15 @@ map.on('click', (e) => {
     </form>
   `;
 
-  const popup = L.popup()
+  L.popup()
     .setLatLng(e.latlng)
     .setContent(popupForm)
     .openOn(map);
 
-  // Wait for popup to render, then attach form handler
   setTimeout(() => {
     const form = document.getElementById('add-marker-form');
     if (form) {
-      form.onsubmit = (event) => {
+      form.addEventListener('submit', (event) => {
         event.preventDefault();
         const description = form.description.value;
         const rating = form.rating.value;
@@ -59,12 +63,12 @@ map.on('click', (e) => {
         updateMarkerPopup(marker);
         marker.openPopup();
         map.closePopup();
-      };
+      });
     }
   }, 10);
 });
 
-// Update popup content with buttons
+// Create popup with Edit/Delete buttons
 function updateMarkerPopup(marker) {
   const { description, rating } = marker.customData;
 
@@ -78,11 +82,13 @@ function updateMarkerPopup(marker) {
   marker.bindPopup(content);
 }
 
-// Handle global button clicks
+// Handle button clicks globally
 document.addEventListener('click', function (e) {
   if (e.target.classList.contains('edit-marker')) {
     const marker = findMarkerFromPopup(e.target);
     if (marker) {
+      currentlyEditingMarker = marker;
+
       const { description, rating } = marker.customData;
 
       const formHTML = `
@@ -106,15 +112,16 @@ document.addEventListener('click', function (e) {
       marker.bindPopup(formHTML).openPopup();
 
       setTimeout(() => {
-        const form = document.getElementById('edit-marker-form');
-        if (form) {
-          form.onsubmit = (event) => {
+        const editForm = document.getElementById('edit-marker-form');
+        if (editForm) {
+          editForm.addEventListener('submit', (event) => {
             event.preventDefault();
-            marker.customData.description = form.description.value;
-            marker.customData.rating = form.rating.value;
+            marker.customData.description = editForm.description.value;
+            marker.customData.rating = editForm.rating.value;
             updateMarkerPopup(marker);
             marker.openPopup();
-          };
+            currentlyEditingMarker = null;
+          });
         }
       }, 10);
     }
@@ -125,14 +132,16 @@ document.addEventListener('click', function (e) {
     if (marker) {
       map.removeLayer(marker);
       markers = markers.filter(m => m !== marker);
+      currentlyEditingMarker = null;
     }
   }
 });
 
-// Helper to find marker from an open popup
+// Helper to identify marker from popup
 function findMarkerFromPopup(element) {
   for (const marker of markers) {
-    if (marker.getPopup().getContent().includes(element.outerHTML)) {
+    const content = marker.getPopup()?.getContent();
+    if (content && content.includes(element.outerHTML)) {
       return marker;
     }
   }
