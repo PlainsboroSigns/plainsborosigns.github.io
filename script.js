@@ -17,7 +17,7 @@ function promptPassword() {
 
 function checkPassword() {
   const input = document.getElementById('editorPass').value;
-  if (input === 'erikperkins1025047') {
+  if (input === '1025047') {
     editingEnabled = true;
     document.getElementById('modeOverlay').style.display = 'none';
     document.getElementById('editor-controls').style.display = 'block';
