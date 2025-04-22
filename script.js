@@ -17,7 +17,7 @@ function promptPassword() {
 
 function checkPassword() {
   const input = document.getElementById('editorPass').value;
-  if (input === 'erikperkins1025047') {
+  if (input === '1025047') {
     editingEnabled = true;
     document.getElementById('modeOverlay').style.display = 'none';
     document.getElementById('editor-controls').style.display = 'block';
@@ -47,6 +47,29 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let markers = [];
+
+// -------------------- Marker Icon by Rating --------------------
+
+function getColorByRating(rating) {
+  switch (parseInt(rating)) {
+    case 1: return "green";
+    case 2: return "lime";
+    case 3: return "yellow";
+    case 4: return "orange";
+    case 5: return "red";
+    default: return "blue";
+  }
+}
+
+function createColoredIcon(rating) {
+  return L.divIcon({
+    className: 'custom-div-icon',
+    html: `<div style="background-color:${getColorByRating(rating)};width:16px;height:16px;border-radius:50%;border:2px solid white;"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    popupAnchor: [0, -8]
+  });
+}
 
 // -------------------- Add Marker --------------------
 
@@ -97,7 +120,10 @@ map.on('click', (e) => {
 // -------------------- Create + Update Markers --------------------
 
 function createMarker(data) {
-  const marker = L.marker([data.lat, data.lng]).addTo(map);
+  const marker = L.marker([data.lat, data.lng], {
+    icon: createColoredIcon(data.rating)
+  }).addTo(map);
+
   marker.customData = data;
   marker.bindPopup(generatePopupContent(marker));
   markers.push(marker);
@@ -121,10 +147,18 @@ function generatePopupContent(marker) {
 function refreshAllPopups() {
   for (const marker of markers) {
     marker.setPopupContent(generatePopupContent(marker));
+    marker.setIcon(createColoredIcon(marker.customData.rating));
   }
 }
 
-// -------------------- Handle Edit/Delete --------------------
+function findMarkerByLatLng(lat, lng) {
+  return markers.find(m => {
+    const pos = m.getLatLng();
+    return pos.lat === lat && pos.lng === lng;
+  });
+}
+
+// -------------------- Edit/Delete Events --------------------
 
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('edit-marker')) {
@@ -167,6 +201,7 @@ document.addEventListener('click', (e) => {
           marker.customData.rating = form.rating.value;
           marker.customData.photo = form.photo.value;
           marker.setPopupContent(generatePopupContent(marker));
+          marker.setIcon(createColoredIcon(marker.customData.rating));
           marker.openPopup();
         };
       }
@@ -184,23 +219,12 @@ document.addEventListener('click', (e) => {
   }
 });
 
-function findMarkerByLatLng(lat, lng) {
-  return markers.find(m => {
-    const pos = m.getLatLng();
-    return pos.lat === lat && pos.lng === lng;
-  });
-}
-
-// -------------------- Load markers from JSON --------------------
+// -------------------- Load and Save --------------------
 
 fetch('data/markers.json')
   .then(res => res.json())
-  .then(data => {
-    data.forEach(markerData => createMarker(markerData));
-  })
+  .then(data => data.forEach(markerData => createMarker(markerData)))
   .catch(err => console.error('Error loading markers.json', err));
-
-// -------------------- Export markers to JSON --------------------
 
 function downloadMarkerData() {
   const markerData = markers.map(m => m.customData);
@@ -213,7 +237,7 @@ function downloadMarkerData() {
   URL.revokeObjectURL(url);
 }
 
-// -------------------- Image Viewer with Navigation --------------------
+// -------------------- Gallery Image Viewer --------------------
 
 function showImagePopup(currentMarker) {
   const existing = document.getElementById('imagePopup');
@@ -251,9 +275,9 @@ function showImagePopup(currentMarker) {
 
   const controls = document.createElement('div');
   controls.innerHTML = `
-    <button id="prevImage" style="margin: 0 20px; padding: 8px 16px;">⟵ Prev</button>
-    <button id="nextImage" style="margin: 0 20px; padding: 8px 16px;">Next ⟶</button>
-    <br><br>
+    <button id="prevImage" style="margin: 0 10px; padding: 8px 16px;">⟵ Prev</button>
+    <button id="nextImage" style="margin: 0 10px; padding: 8px 16px;">Next ⟶</button><br><br>
+    <button id="showMarker" style="margin: 10px; padding: 6px 14px;">📍 Show Marker</button><br>
     <button onclick="document.getElementById('imagePopup').remove()" style="margin-top:10px; padding: 5px 15px;">Close</button>
   `;
 
@@ -281,6 +305,13 @@ function showImagePopup(currentMarker) {
   document.getElementById('nextImage').onclick = () => {
     currentIndex = (currentIndex + 1) % markers.length;
     updateDisplay();
+  };
+
+  document.getElementById('showMarker').onclick = () => {
+    const marker = markers[currentIndex];
+    document.getElementById('imagePopup').remove();
+    map.setView(marker.getLatLng(), 17);
+    marker.openPopup();
   };
 
   document.onkeydown = (e) => {
