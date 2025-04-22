@@ -53,10 +53,9 @@ let markers = [];
 function getColorByRating(rating) {
   switch (parseInt(rating)) {
     case 1: return "green";
-    case 2: return "lime";
-    case 3: return "yellow";
-    case 4: return "orange";
-    case 5: return "red";
+    case 2: return "yellow";
+    case 3: return "orange";
+    case 4: return "red";
     default: return "blue";
   }
 }
@@ -85,8 +84,7 @@ map.on('click', (e) => {
       </label><br><br>
       <label>Wear Rating (1-5):<br>
         <select name="rating">
-          <option>1</option><option>2</option><option>3</option>
-          <option>4</option><option>5</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option>
         </select>
       </label><br><br>
       <label>Photo file name (in /images/):<br>
@@ -181,7 +179,6 @@ document.addEventListener('click', (e) => {
             <option ${rating == 2 ? "selected" : ""}>2</option>
             <option ${rating == 3 ? "selected" : ""}>3</option>
             <option ${rating == 4 ? "selected" : ""}>4</option>
-            <option ${rating == 5 ? "selected" : ""}>5</option>
           </select>
         </label><br><br>
         <label>Photo file name:<br>
@@ -311,7 +308,7 @@ function showImagePopup(currentMarker) {
   document.getElementById('showMarker').onclick = () => {
     const marker = markers[currentIndex];
     document.getElementById('imagePopup').remove();
-    map.setView(marker.getLatLng(), 17, { animate: true });
+    map.flyTo(marker.getLatLng(), 17, { animate: true });
     marker.openPopup();
   };
 
