@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,11 +19,32 @@
       height: 85vh;
       width: 100%;
     }
+    #info-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-size: 24px;
+      background: white;
+      border: 1px solid #888;
+      border-radius: 50%;
+      padding: 8px 12px;
+      text-decoration: none;
+      color: black;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      z-index: 10001;
+    }
+    #info-button:hover {
+      background: #f0f0f0;
+    }
   </style>
 </head>
 <body>
 
   <h1>PlainsboroSigns</h1>
+
+  <!-- Info Button -->
+  <a id="info-button" href="PlainsboroSigns_CheatSheet.png" target="_blank"
+     title="View Wear Rating Guide">ℹ️</a>
 
   <!-- Editor-only control panel -->
   <div id="editor-controls" style="text-align: center; margin: 10px; display: none;">
