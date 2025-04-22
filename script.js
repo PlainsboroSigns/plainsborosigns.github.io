@@ -22,7 +22,7 @@ function checkPassword() {
     document.getElementById('modeOverlay').style.display = 'none';
     document.getElementById('editor-controls').style.display = 'block';
     alert("Edit mode enabled.");
-    refreshAllPopups(); // ✅ KEY FIX
+    refreshAllPopups();
   } else {
     document.getElementById('wrongPass').style.display = 'block';
   }
@@ -99,7 +99,6 @@ map.on('click', (e) => {
 function createMarker(data) {
   const marker = L.marker([data.lat, data.lng]).addTo(map);
   marker.customData = data;
-
   marker.bindPopup(generatePopupContent(marker));
   markers.push(marker);
   return marker;
@@ -107,11 +106,11 @@ function createMarker(data) {
 
 function generatePopupContent(marker) {
   const { description, rating, photo } = marker.customData;
-
   return `
     <strong>Description:</strong> ${description}<br>
     <strong>Wear Rating:</strong> ${rating}/5<br>
-    <img src="images/${photo}" alt="Sign photo" style="max-width: 100px; margin-top: 5px;"><br><br>
+    <img src="images/${photo}" alt="Sign photo" style="max-width: 100px; margin-top: 5px; cursor:pointer;"
+         onclick="showImagePopup(findMarkerByLatLng(${marker.getLatLng().lat}, ${marker.getLatLng().lng}))"><br><br>
     ${editingEnabled ? `
       <button data-lat="${marker.getLatLng().lat}" data-lng="${marker.getLatLng().lng}" class="edit-marker">Edit</button>
       <button data-lat="${marker.getLatLng().lat}" data-lng="${marker.getLatLng().lng}" class="delete-marker">Delete</button>
@@ -214,3 +213,80 @@ function downloadMarkerData() {
   URL.revokeObjectURL(url);
 }
 
+// -------------------- Image Viewer with Navigation --------------------
+
+function showImagePopup(currentMarker) {
+  const existing = document.getElementById('imagePopup');
+  if (existing) existing.remove();
+
+  let currentIndex = markers.indexOf(currentMarker);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'imagePopup';
+  overlay.style.position = 'fixed';
+  overlay.style.top = 0;
+  overlay.style.left = 0;
+  overlay.style.width = '100%';
+  overlay.style.height = '100%';
+  overlay.style.background = 'rgba(0,0,0,0.9)';
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = 10000;
+  overlay.style.color = 'white';
+  overlay.style.fontFamily = 'sans-serif';
+  overlay.style.textAlign = 'center';
+
+  const img = document.createElement('img');
+  img.style.maxWidth = '90%';
+  img.style.maxHeight = '80%';
+  img.style.border = '4px solid white';
+  img.style.boxShadow = '0 0 10px black';
+  img.style.marginBottom = '10px';
+
+  const caption = document.createElement('div');
+  caption.style.fontSize = '18px';
+  caption.style.marginBottom = '20px';
+
+  const controls = document.createElement('div');
+  controls.innerHTML = `
+    <button id="prevImage" style="margin: 0 20px; padding: 8px 16px;">⟵ Prev</button>
+    <button id="nextImage" style="margin: 0 20px; padding: 8px 16px;">Next ⟶</button>
+    <br><br>
+    <button onclick="document.getElementById('imagePopup').remove()" style="margin-top:10px; padding: 5px 15px;">Close</button>
+  `;
+
+  overlay.appendChild(img);
+  overlay.appendChild(caption);
+  overlay.appendChild(controls);
+  document.body.appendChild(overlay);
+
+  function updateDisplay() {
+    const m = markers[currentIndex];
+    img.src = "images/" + m.customData.photo;
+    caption.innerHTML = `
+      <strong>${m.customData.description}</strong><br>
+      Wear Rating: ${m.customData.rating}/5
+    `;
+  }
+
+  updateDisplay();
+
+  document.getElementById('prevImage').onclick = () => {
+    currentIndex = (currentIndex - 1 + markers.length) % markers.length;
+    updateDisplay();
+  };
+
+  document.getElementById('nextImage').onclick = () => {
+    currentIndex = (currentIndex + 1) % markers.length;
+    updateDisplay();
+  };
+
+  document.onkeydown = (e) => {
+    if (!document.getElementById('imagePopup')) return;
+    if (e.key === "ArrowLeft") document.getElementById('prevImage').click();
+    if (e.key === "ArrowRight") document.getElementById('nextImage').click();
+    if (e.key === "Escape") overlay.remove();
+  };
+}
