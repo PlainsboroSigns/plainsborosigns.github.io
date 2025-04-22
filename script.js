@@ -17,11 +17,12 @@ function promptPassword() {
 
 function checkPassword() {
   const input = document.getElementById('editorPass').value;
-  if (input === '1025047') {
+  if (input === 'erikperkins1025047') {
     editingEnabled = true;
     document.getElementById('modeOverlay').style.display = 'none';
     document.getElementById('editor-controls').style.display = 'block';
     alert("Edit mode enabled.");
+    refreshAllPopups(); // ✅ KEY FIX
   } else {
     document.getElementById('wrongPass').style.display = 'block';
   }
@@ -118,7 +119,13 @@ function generatePopupContent(marker) {
   `;
 }
 
-// -------------------- Handle Edit/Delete Buttons --------------------
+function refreshAllPopups() {
+  for (const marker of markers) {
+    marker.setPopupContent(generatePopupContent(marker));
+  }
+}
+
+// -------------------- Handle Edit/Delete --------------------
 
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('edit-marker')) {
@@ -206,3 +213,4 @@ function downloadMarkerData() {
   a.click();
   URL.revokeObjectURL(url);
 }
+
