@@ -82,7 +82,7 @@ map.on('click', (e) => {
       <label>Description:<br>
         <input type="text" name="description" required>
       </label><br><br>
-      <label>Wear Rating (1-5):<br>
+      <label>Wear Rating (1-4):<br>
         <select name="rating">
           <option>1</option><option>2</option><option>3</option><option>4</option>
         </select>
@@ -133,7 +133,7 @@ function generatePopupContent(marker) {
   const { description, rating, photo } = marker.customData;
   return `
     <strong>Description:</strong> ${description}<br>
-    <strong>Wear Rating:</strong> ${rating}/5<br>
+    <strong>Wear Rating:</strong> ${rating}/4<br>
     <img src="images/${photo}" alt="Sign photo" style="max-width: 100px; margin-top: 5px; cursor:pointer;"
          onclick="showImagePopup(findMarkerByLatLng(${marker.getLatLng().lat}, ${marker.getLatLng().lng}))"><br><br>
     ${editingEnabled ? `
@@ -173,7 +173,7 @@ document.addEventListener('click', (e) => {
         <label>Description:<br>
           <input type="text" name="description" value="${description}" required>
         </label><br><br>
-        <label>Wear Rating (1-5):<br>
+        <label>Wear Rating (1-4):<br>
           <select name="rating">
             <option ${rating == 1 ? "selected" : ""}>1</option>
             <option ${rating == 2 ? "selected" : ""}>2</option>

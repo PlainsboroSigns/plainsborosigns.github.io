@@ -7,13 +7,6 @@
     "photo": "stopsign.png"
   },
   {
-    "lat": 40.33349164589475,
-    "lng": -74.56515312194826,
-    "description": "Do Not Enter",
-    "rating": "5",
-    "photo": "donotenter.png"
-  },
-  {
     "lat": 40.33466945289882,
     "lng": -74.57274913787843,
     "description": "No U-Turn",
@@ -26,5 +19,12 @@
     "description": "Pedestrian Crossing",
     "rating": "2",
     "photo": "pedestriancrossing.png"
+  },
+  {
+    "lat": 40.333500424657316,
+    "lng": -74.56521213054658,
+    "description": "Stop Sign",
+    "rating": "4",
+    "photo": "stopsign.png"
   }
 ]
