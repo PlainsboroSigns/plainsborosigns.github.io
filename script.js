@@ -62,12 +62,13 @@ function getColorByRating(rating) {
 }
 
 function createColoredIcon(rating) {
-  return L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div style="background-color:${getColorByRating(rating)};width:16px;height:16px;border-radius:50%;border:2px solid white;"></div>`,
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
-    popupAnchor: [0, -8]
+  return new L.Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorByRating(rating)}.png`,
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
   });
 }
 
@@ -310,7 +311,7 @@ function showImagePopup(currentMarker) {
   document.getElementById('showMarker').onclick = () => {
     const marker = markers[currentIndex];
     document.getElementById('imagePopup').remove();
-    map.setView(marker.getLatLng(), 17);
+    map.setView(marker.getLatLng(), 17, { animate: true });
     marker.openPopup();
   };
 
